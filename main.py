@@ -1,17 +1,18 @@
 import os
-import streamlit as st
 import pickle
 import time
 
+import streamlit as st
 from dotenv import load_dotenv
 
-from langchain_groq import ChatGroq
 from langchain.chains import RetrievalQAWithSourcesChain
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 from langchain_community.document_loaders import WebBaseLoader
 from langchain_community.vectorstores import FAISS
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
+
+from langchain_groq import ChatGroq
 
 # Load environment variables
 load_dotenv()
@@ -21,6 +22,7 @@ st.title("News Research Tool 📈")
 st.sidebar.title("News Article URLs")
 
 urls = []
+
 for i in range(3):
     url = st.sidebar.text_input(f"URL {i+1}")
     urls.append(url)
@@ -31,16 +33,23 @@ file_path = "faiss_store.pkl"
 
 main_placeholder = st.empty()
 
+
+# Cache embedding model
+@st.cache_resource
+def load_embeddings():
+    return HuggingFaceEmbeddings(
+        model_name="sentence-transformers/all-MiniLM-L6-v2",
+        model_kwargs={"device": "cpu"}
+    )
+
+
+embeddings = load_embeddings()
+
 # Initialize Groq LLM
 llm = ChatGroq(
     model="llama-3.3-70b-versatile",
     temperature=0.9,
     groq_api_key=os.getenv("GROQ_API_KEY")
-)
-
-# Initialize embeddings once
-embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
 )
 
 if process_url_clicked:
@@ -51,34 +60,34 @@ if process_url_clicked:
         st.warning("Please enter at least one URL.")
         st.stop()
 
-    # Faster loader than UnstructuredURLLoader
+    # Load URLs
     loader = WebBaseLoader(urls)
 
-    start = time.time()
-    main_placeholder.text("Loading articles... ⏳")
+    main_placeholder.text("Loading Articles... ⏳")
 
+    start = time.time()
     data = loader.load()
 
     main_placeholder.text(
-        f"Articles loaded in {time.time() - start:.2f} sec ✅"
+        f"Articles Loaded in {time.time() - start:.2f} seconds ✅"
     )
 
-    # Split documents
+    # Split Documents
     start = time.time()
 
     text_splitter = RecursiveCharacterTextSplitter(
+        separators=["\n\n", "\n", ".", ","],
         chunk_size=1000,
-        chunk_overlap=100,
-        separators=["\n\n", "\n", ".", ","]
+        chunk_overlap=100
     )
 
     docs = text_splitter.split_documents(data)
 
     main_placeholder.text(
-        f"Created {len(docs)} chunks in {time.time() - start:.2f} sec ✅"
+        f"Created {len(docs)} chunks in {time.time() - start:.2f} seconds ✅"
     )
 
-    # Create embeddings and vector store
+    # Build Vector Store
     start = time.time()
 
     vectorstore = FAISS.from_documents(
@@ -87,16 +96,15 @@ if process_url_clicked:
     )
 
     main_placeholder.text(
-        f"Vector store built in {time.time() - start:.2f} sec ✅"
+        f"Vector Store Built in {time.time() - start:.2f} seconds ✅"
     )
 
-    # Save vector store
     with open(file_path, "wb") as f:
         pickle.dump(vectorstore, f)
 
-    main_placeholder.text("Processing complete! 🎉")
+    main_placeholder.text("Processing Complete! 🎉")
 
-# Question Input
+# User Query
 query = st.text_input("Question:")
 
 if query:
@@ -127,6 +135,7 @@ if query:
 
     if sources:
         st.subheader("Sources")
+
         for source in sources.split("\n"):
             if source.strip():
                 st.write(source)
