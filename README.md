@@ -9,6 +9,9 @@
 
 ---
 
+<a href="https://news-research-tool-snp.streamlit.app/">Try the App</a>
+
+
 # 📌 Project Overview
 
 News Research Tool is a Retrieval-Augmented Generation (RAG) application that enables users to analyze and query multiple news articles using natural language.
