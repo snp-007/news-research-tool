@@ -6,15 +6,11 @@ langchain-huggingface==0.0.3
 python-dotenv==1.0.1
 streamlit==1.39.0
 
-unstructured==0.15.12
 tiktoken==0.8.0
 
 faiss-cpu==1.8.0.post1
 sentence-transformers==3.0.1
 
-python-magic==0.4.27
-python-magic-bin==0.4.14
-
-requests
 beautifulsoup4
 lxml
+requests
